@@ -69,13 +69,15 @@
       <h3 data-bind="elder_name" style="font-size:1.6rem; font-weight:800; margin-bottom:0.5rem;">이름</h3>
       <span style="background:#FEFCBF; color:#B7791F; padding:5px 12px; border-radius:10px; font-weight:700;">햇살반</span>
       
-      <div id="weekly_cal_area"></div> <div style="margin-top:1rem; text-align:right;">
+      <div id="weekly_cal_area"></div>
+      <div style="margin-top:1rem; text-align:right;">
         <button style="font-size:0.9rem; color:var(--sec); font-weight:800; text-decoration:underline;" data-action="calendar_modal">달력 자세히 보기</button>
       </div>
       <button class="btn_pill" data-action="home" style="margin-top:2rem; width:100%; font-size:0.9rem;">↩ 어르신 변경</button>
     </aside>
 
-    <div style="display:flex; flex-direction:column; gap:2rem; min-width:0;"> <div>
+    <div style="display:flex; flex-direction:column; gap:2rem; min-width:0;">
+      <div>
         <h3 style="font-size:1.4rem; font-weight:800; margin-bottom:1rem; color:var(--sec);">오늘도 즐겁게 활동해볼까요?</h3>
         <div class="scroll_rail drag_scroll">
           <button class="rail_item" style="background:#FFF5F5;" data-action="open_list" data-type="cognitive">
@@ -113,16 +115,31 @@
           <div><div style="font-size:0.8rem; color:#718096;">총 출석</div><strong style="font-size:1.6rem;">21일</strong></div>
           <div><div style="font-size:0.8rem; color:#718096;">완료 활동</div><strong style="font-size:1.6rem; color:var(--pri);">18개</strong></div>
         </div>
-        <div style="background:#F7FAFC; padding:1.5rem; border-radius:16px;">
-          <p style="font-size:0.9rem; font-weight:700; margin-bottom:10px;">마음 체크리스트 변화 추이</p>
-          <div class="chart_wrap">
-             <div class="bar_col" style="height:40%;"></div><div class="bar_col" style="height:60%;"></div>
-             <div class="bar_col active" style="height:85%;"></div><div class="bar_col" style="height:55%;"></div>
-             <div class="bar_col" style="height:70%;"></div><div class="bar_col" style="height:60%;"></div>
-          </div>
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">
+            <div id="month_calendar_placeholder" style="background:#fff; border:1px solid #eee; border-radius:16px; padding:10px;">
+                </div>
+            <div style="background:#F7FAFC; padding:1.5rem; border-radius:16px;">
+                <p style="font-size:0.9rem; font-weight:700; margin-bottom:10px;">마음 체크리스트 변화 추이</p>
+                <div class="chart_wrap">
+                    <div class="bar_col" style="height:40%;"></div><div class="bar_col" style="height:60%;"></div>
+                    <div class="bar_col active" style="height:85%;"></div><div class="bar_col" style="height:55%;"></div>
+                    <div class="bar_col" style="height:70%;"></div><div class="bar_col" style="height:60%;"></div>
+                </div>
+            </div>
         </div>
       </div>
     </div>
+  </div>
+</template>
+
+<template id="t_content_player">
+  <div style="width:100%;">
+    <div style="display:flex; justify-content:flex-end; gap:12px; margin-bottom:1rem;">
+      <button class="btn_pill btn_primary" data-action="done_content" style="box-shadow:0 5px 15px rgba(237,102,99,0.3);">활동 완료</button>
+      <button class="btn_pill" data-action="close_play" style="background:#fff; border:1px solid #ddd;">종료하기</button>
+    </div>
+    <div id="player_area" style="background:#000; border-radius:24px; width:100%; aspect-ratio:16/9; overflow:hidden; box-shadow:var(--shadow);"></div>
   </div>
 </template>
 

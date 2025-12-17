@@ -11,12 +11,12 @@ const state = {
     { name: "박철수", birth: "19450815", grade: "2등급", img: "https://i.pravatar.cc/150?u=2" }
   ],
   contents: {
-    // 십이간지 (html) -> id: cog_xx, url: 01, 02, 03, 04...
+    // 십이간지 (html)
     cognitive: Array.from({length:8}, (_, i) => ({
       id: `cog_${i+1}`, title: `십이간지 동물 찾기 ${i+1}`, srcType: 'html', 
-      url: `01m_01w_03s_0${(i % 4) + 1}.html` // 01, 02, 03, 04 반복
+      url: `01m_01w_03s_0${(i % 4) + 1}.html`
     })),
-    // 체조, 종이접기 (유튜브)
+    // 유튜브
     gym: [
       { id: "gym_1", title: "건강 체조 1강", srcType: "yt", url: "y6120QOlsfU" },
       { id: "gym_2", title: "건강 체조 2강", srcType: "yt", url: "3SzoI798qPY" }
@@ -24,7 +24,7 @@ const state = {
     origami: [ { id: "ori_1", title: "종이 접기 기초", srcType: "yt", url: "dQw4w9WgXcQ" } ]
   }
 };
-// Fallback content
+// Fallback
 state.contents.mind = state.contents.review = state.contents.brain = state.contents.art = state.contents.focus = state.contents.cognitive;
 
 export async function Start() {
@@ -36,8 +36,10 @@ export async function Start() {
 async function preloadFrames() {
   const paths = { login: "/m/login.html", app: "/m/app.html" };
   for (const [key, url] of Object.entries(paths)) {
-    const res = await fetch(url, { cache: "no-store" });
-    frameCache[key] = await res.text();
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      frameCache[key] = await res.text();
+    } catch(e) { console.error(e); }
   }
 }
 
@@ -63,7 +65,6 @@ export function ShowScreen(tid, data = {}) {
   if (tid === "t_content_list") renderContentList(data.type);
   if (tid === "t_content_player") renderPlayer(data.item);
 
-  // PC 드래그 스크롤 활성화
   enableDragScroll();
 }
 
@@ -72,12 +73,12 @@ function onAppClick(e) {
   if (!btn) return;
   const { action, go, name, type, id } = btn.dataset;
 
-  // 1. 모달 닫기 (X 버튼)
-  if (action === "close_modal") { $(".modal_wrap")?.remove(); return; }
-  // 2. 모달 닫기 (배경 클릭)
-  if (e.target.classList.contains("modal_bg")) { $(".modal_wrap")?.remove(); return; }
+  // 모달 닫기
+  if (action === "close_modal" || e.target.classList.contains("modal_bg")) { 
+    $(".modal_wrap")?.remove(); return; 
+  }
 
-  // 3. 화면 이동
+  // 어르신 선택
   if (go === "t_person_home") {
     const img = btn.querySelector("img").src;
     const birth = btn.dataset.birth;
@@ -90,8 +91,9 @@ function onAppClick(e) {
     case "home": ShowScreen("t_profile_select"); break;
     case "logout": if(confirm("로그아웃 하시겠습니까?")) ShowFrame("login"); break;
 
-    case "plan": openModal("주간 계획안", "/m/assets/plan.png"); break;
-    case "calendar_modal": openModal("월간 캘린더", "/m/assets/calendar_full.png"); break;
+    case "plan": openModal("주간 계획안", "/m/assets/plan.png", 'img'); break;
+    // ★ 달력 자세히 보기 클릭 시 실제 달력 모달 띄우기 ★
+    case "calendar_modal": openModal("월간 캘린더", null, 'cal'); break;
 
     case "add_elder": ShowScreen("t_profile_add"); break;
     case "trigger_file": $("#elder_file").click(); break;
@@ -119,15 +121,13 @@ function onAppClick(e) {
   }
 }
 
-// --- Logic ---
+// --- Logic Helpers ---
 
 function calcAge(birth) {
   if(!birth || birth.length !== 8) return 0;
   const today = new Date();
-  const by = parseInt(birth.substring(0,4)), bm = parseInt(birth.substring(4,6)), bd = parseInt(birth.substring(6,8));
-  let age = today.getFullYear() - by;
-  if (today.getMonth() + 1 < bm || (today.getMonth() + 1 === bm && today.getDate() < bd)) age--;
-  return age;
+  const by = parseInt(birth.substring(0,4));
+  return today.getFullYear() - by; // 단순 연도 계산 (MVP용)
 }
 
 function renderProfiles() {
@@ -145,19 +145,59 @@ function renderHome(data) {
   $("[data-bind='elder_name']", appMain).textContent = data.name;
   $("[data-bind='elder_img']", appMain).src = data.img;
 
-  // 주간 달력
+  // 1. 프로필 하단 주간 달력
   const calDiv = $("#weekly_cal_area", appMain);
-  let html = `<div class="calendar_row">`;
   const days = ['일','월','화','수','목','금','토'];
   const today = new Date();
+  let html = `<div class="calendar_row">`;
   for(let i=-3; i<=3; i++) {
      const d = new Date(); d.setDate(today.getDate() + i);
      const isToday = i===0 ? 'today' : '';
-     // 랜덤 출석 표시
      const stamp = (i <= 0 && Math.random() > 0.3) ? `<div class="stamp">출석</div>` : "";
      html += `<div class="day_cell ${isToday}"><div class="day_name">${days[d.getDay()]}</div><div class="day_num">${d.getDate()}</div>${stamp}</div>`;
   }
   calDiv.innerHTML = html + `</div>`;
+
+  // 2. 월간 리포트 영역에 실제 달력 주입
+  const monthReportArea = $("#month_calendar_placeholder", appMain);
+  if(monthReportArea) {
+    monthReportArea.innerHTML = generateCalendarHTML();
+  }
+}
+
+// ★ 달력 생성기 (자바스크립트로 HTML 생성) ★
+function generateCalendarHTML() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0~11
+  
+  const firstDay = new Date(year, month, 1).getDay();
+  const lastDate = new Date(year, month + 1, 0).getDate();
+  const todayDate = date.getDate();
+
+  let html = `
+    <div style="width:100%; max-width:400px; margin:0 auto;">
+      <div style="font-weight:800; font-size:1.2rem; margin-bottom:10px; color:var(--sec);">${year}년 ${month+1}월</div>
+      <div class="cal_grid_head">
+        <div class="cal_head_cell" style="color:#E53E3E">일</div>
+        <div class="cal_head_cell">월</div><div class="cal_head_cell">화</div><div class="cal_head_cell">수</div><div class="cal_head_cell">목</div><div class="cal_head_cell">금</div>
+        <div class="cal_head_cell" style="color:#3182CE">토</div>
+      </div>
+      <div class="cal_grid_body">
+  `;
+  
+  // 빈칸
+  for(let i=0; i<firstDay; i++) html += `<div></div>`;
+  
+  // 날짜
+  for(let i=1; i<=lastDate; i++) {
+    const isToday = i === todayDate ? 'today' : '';
+    // 랜덤 출석 점 (오늘 이전 날짜)
+    const dot = (i <= todayDate && Math.random() > 0.3) ? `<div class="cal_dot"></div>` : "";
+    html += `<div class="cal_cell ${isToday}">${i} ${dot}</div>`;
+  }
+  html += `</div></div>`;
+  return html;
 }
 
 function renderContentList(type) {
@@ -170,26 +210,41 @@ function renderContentList(type) {
   rail.innerHTML = list.map(item => `
     <button class="rail_item" data-action="play" data-id="${item.id}">
       <div class="thumb_box">
-        <img src="/m/assets/thumb_${item.id}.png" onerror="this.src='https://via.placeholder.com/300x170?text=SilverKok'">
+        <img src="/m/assets/thumb_${item.id}.png" style="display:none;" onload="this.style.display='block'">
+        <span style="font-size:3rem;">▶</span>
       </div>
       <strong style="font-size:1.1rem; color:var(--sec);">${item.title}</strong>
     </button>`).join("");
 }
 
+// ★ 플레이어 & HTTPS 믹스드 콘텐츠 해결 ★
 function renderPlayer(item) {
   if(!item) return;
+  state.completed.add(item.id);
+  
   const area = $("#player_area", appMain);
   let src = "";
-  if(item.srcType === 'yt') src = `https://www.youtube.com/embed/${item.url}?autoplay=1`;
-  else src = `http://brand.kidscokmini.com/data/kidscok_data/silver/${item.url}`;
-
-  // iframe
-  area.innerHTML = `<iframe src="${src}" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>`;
   
-  // HTTP 경고 (콘솔)
-  if(item.srcType === 'html' && location.protocol === 'https:') {
-    console.warn("HTTPS 환경에서는 HTTP 콘텐츠가 차단될 수 있습니다.");
-    // 필요 시 대체 UI 표시 가능
+  // 1. 유튜브
+  if(item.srcType === 'yt') {
+    area.innerHTML = `<iframe src="https://www.youtube.com/embed/${item.url}?autoplay=1" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>`;
+  } 
+  // 2. HTML 콘텐츠 (HTTP 문제 해결)
+  else {
+    // HTTPS 환경에서 HTTP 콘텐츠를 iframe에 넣으면 차단됨.
+    // 해결책: 데모용 Blob HTML을 만들어서 보여주거나, 경고문 표시.
+    if (location.protocol === 'https:') {
+      area.innerHTML = `
+        <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; text-align:center;">
+          <p style="font-size:1.2rem; margin-bottom:10px;">🔒 보안상의 이유로 HTTPS 환경에서<br>외부 HTTP 콘텐츠를 바로 열 수 없습니다.</p>
+          <a href="http://brand.kidscokmini.com/data/kidscok_data/silver/${item.url}" target="_blank" class="btn_pill btn_primary" style="text-decoration:none; display:inline-block;">새 창에서 콘텐츠 열기</a>
+        </div>
+      `;
+    } else {
+      // 로컬호스트(http)에서는 정상 작동
+      src = `http://brand.kidscokmini.com/data/kidscok_data/silver/${item.url}`;
+      area.innerHTML = `<iframe src="${src}" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>`;
+    }
   }
 }
 
@@ -205,48 +260,45 @@ function saveNewElder() {
   ShowScreen("t_profile_select");
 }
 
-function openModal(title, src) {
+function openModal(title, src, type) {
   const m = document.createElement("div");
   m.className = "modal_wrap";
+  
+  let contentHtml = "";
+  if (type === 'cal') {
+    // 실제 달력 생성
+    contentHtml = `<div style="padding:2rem;">${generateCalendarHTML()}</div>`;
+  } else {
+    // 이미지 (계획안)
+    contentHtml = `<div style="padding:0; max-height:80vh; overflow-y:auto; min-height:300px; background:#eee; display:flex; align-items:center; justify-content:center;">
+        <img src="${src}" onerror="this.style.display='none'; this.parentElement.innerHTML='<p>이미지가 없습니다<br>(${src})</p>'" style="width:100%;">
+      </div>`;
+  }
+
   m.innerHTML = `
     <div class="modal_bg"></div>
     <div class="modal_content">
       <div class="modal_head"><span>${title}</span><button data-action="close_modal" style="font-size:1.5rem;">&times;</button></div>
-      <div style="padding:0; max-height:80vh; overflow-y:auto; text-align:center;">
-        <img src="${src}" onerror="this.src='https://via.placeholder.com/800x600?text=이미지없음'" style="width:100%;">
-      </div>
+      ${contentHtml}
     </div>`;
   appDom.appendChild(m);
 }
 
-// PC 드래그 스크롤 (마우스로 스와이프)
+// PC 드래그 스크롤
 function enableDragScroll() {
-  const sliders = document.querySelectorAll('.drag_scroll');
-  sliders.forEach(slider => {
+  document.querySelectorAll('.drag_scroll').forEach(slider => {
     let isDown = false, startX, scrollLeft;
-    slider.addEventListener('mousedown', (e) => {
-      isDown = true; slider.classList.add('dragging');
-      startX = e.pageX - slider.offsetLeft;
-      scrollLeft = slider.scrollLeft;
-    });
+    slider.addEventListener('mousedown', (e) => { isDown = true; slider.classList.add('dragging'); startX = e.pageX - slider.offsetLeft; scrollLeft = slider.scrollLeft; });
     slider.addEventListener('mouseleave', () => { isDown = false; slider.classList.remove('dragging'); });
     slider.addEventListener('mouseup', () => { isDown = false; slider.classList.remove('dragging'); });
-    slider.addEventListener('mousemove', (e) => {
-      if(!isDown) return;
-      e.preventDefault();
-      const x = e.pageX - slider.offsetLeft;
-      const walk = (x - startX) * 2; // 스크롤 속도
-      slider.scrollLeft = scrollLeft - walk;
-    });
+    slider.addEventListener('mousemove', (e) => { if(!isDown) return; e.preventDefault(); const x = e.pageX - slider.offsetLeft; slider.scrollLeft = scrollLeft - (x - startX) * 2; });
   });
 }
 
 window.handleFile = function(input) {
   if (input.files?.[0]) {
     const reader = new FileReader();
-    reader.onload = e => {
-      const img = $("#preview_img"); img.src = e.target.result; img.classList.remove("hidden");
-    };
+    reader.onload = e => { $("#preview_img").src = e.target.result; $("#preview_img").classList.remove("hidden"); };
     reader.readAsDataURL(input.files[0]);
   }
 };
