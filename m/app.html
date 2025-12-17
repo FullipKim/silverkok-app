@@ -11,7 +11,7 @@ nav button:hover{border-color:rgba(15,76,129,.35)}
 #logout{background:#f3f3f3;border-color:transparent}
 
 /* main layout */
-main{padding:18px;background-color: var(--bg);}
+main{width: 100%;padding:0;margin: 0;}
 
 /* profile select grid */
 .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;color: var(--tx);}
@@ -129,7 +129,7 @@ header button:hover{border-color:rgba(15,76,129,.28)}
 	<div class="topbar-left"><strong></strong></div>
 	<div class="topbar-right">
 		<button class="pill" data-action="home" type="button">처음으로</button>
-		<button class="pill" data-action="logout" type="button">로그아웃</button>
+		<button class="pill red" data-action="logout" type="button">로그아웃</button>
 	</div>
 </nav>
   
@@ -141,8 +141,8 @@ header button:hover{border-color:rgba(15,76,129,.28)}
 		  <div class="t1head">
 			  <h1>어르신을 선택하세요.</h1>
 			  <div class="t1headR">
-				  <button class="pill" data-action="plan" type="button">계획안 보기</button>
-				  <button class="pill primary" data-action="add" type="button">어르신 추가</button>
+				  <button class="pill blue" data-action="plan" type="button">계획안 보기</button>
+				  <button class="pill red" data-action="add" type="button">어르신 추가</button>
 			  </div>
 		  </div>
 		  <div class="profile-grid"></div>
