@@ -1,22 +1,20 @@
 const $ = (sel, root = document) => root.querySelector(sel);
 let rootEl, frameCache = {}, appDom, appMain;
 
-// State & Data
 const state = {
   currentElder: null,
   currentListType: null,
-  completed: new Set(),
+  playingId: null, // ★ 현재 재생중인 ID 추적
+  completed: new Set(), // ★ 완료된 ID 저장소
   profiles: [
     { name: "김금자", birth: "19420505", grade: "3등급", img: "https://i.pravatar.cc/150?u=1" },
     { name: "박철수", birth: "19450815", grade: "2등급", img: "https://i.pravatar.cc/150?u=2" }
   ],
   contents: {
-    // 십이간지 (html)
     cognitive: Array.from({length:8}, (_, i) => ({
       id: `cog_${i+1}`, title: `십이간지 동물 찾기 ${i+1}`, srcType: 'html', 
       url: `01m_01w_03s_0${(i % 4) + 1}.html`
     })),
-    // 유튜브
     gym: [
       { id: "gym_1", title: "건강 체조 1강", srcType: "yt", url: "y6120QOlsfU" },
       { id: "gym_2", title: "건강 체조 2강", srcType: "yt", url: "3SzoI798qPY" }
@@ -24,7 +22,6 @@ const state = {
     origami: [ { id: "ori_1", title: "종이 접기 기초", srcType: "yt", url: "dQw4w9WgXcQ" } ]
   }
 };
-// Fallback
 state.contents.mind = state.contents.review = state.contents.brain = state.contents.art = state.contents.focus = state.contents.cognitive;
 
 export async function Start() {
@@ -73,12 +70,10 @@ function onAppClick(e) {
   if (!btn) return;
   const { action, go, name, type, id } = btn.dataset;
 
-  // 모달 닫기
   if (action === "close_modal" || e.target.classList.contains("modal_bg")) { 
     $(".modal_wrap")?.remove(); return; 
   }
 
-  // 어르신 선택
   if (go === "t_person_home") {
     const img = btn.querySelector("img").src;
     const birth = btn.dataset.birth;
@@ -90,11 +85,8 @@ function onAppClick(e) {
   switch (action) {
     case "home": ShowScreen("t_profile_select"); break;
     case "logout": if(confirm("로그아웃 하시겠습니까?")) ShowFrame("login"); break;
-
     case "plan": openModal("주간 계획안", "/m/assets/plan.png", 'img'); break;
-    // ★ 달력 자세히 보기 클릭 시 실제 달력 모달 띄우기 ★
     case "calendar_modal": openModal("월간 캘린더", null, 'cal'); break;
-
     case "add_elder": ShowScreen("t_profile_add"); break;
     case "trigger_file": $("#elder_file").click(); break;
     case "save_elder": saveNewElder(); break;
@@ -106,11 +98,14 @@ function onAppClick(e) {
     
     case "play": 
       const item = findContent(state.currentListType, id);
+      state.playingId = id; // ★ 현재 재생 ID 저장
       ShowScreen("t_content_player", { item }); 
       break;
 
     case "done_content":
-      alert("완료되었습니다.");
+      // ★ 완료 버튼 클릭 시 ID 기록
+      if(state.playingId) state.completed.add(state.playingId);
+      alert("활동이 완료되었습니다.");
       ShowScreen("t_content_list", { type: state.currentListType });
       break;
     
@@ -121,13 +116,12 @@ function onAppClick(e) {
   }
 }
 
-// --- Logic Helpers ---
-
+// Logic Helpers
 function calcAge(birth) {
   if(!birth || birth.length !== 8) return 0;
   const today = new Date();
   const by = parseInt(birth.substring(0,4));
-  return today.getFullYear() - by; // 단순 연도 계산 (MVP용)
+  return today.getFullYear() - by;
 }
 
 function renderProfiles() {
@@ -145,7 +139,6 @@ function renderHome(data) {
   $("[data-bind='elder_name']", appMain).textContent = data.name;
   $("[data-bind='elder_img']", appMain).src = data.img;
 
-  // 1. 프로필 하단 주간 달력
   const calDiv = $("#weekly_cal_area", appMain);
   const days = ['일','월','화','수','목','금','토'];
   const today = new Date();
@@ -158,26 +151,21 @@ function renderHome(data) {
   }
   calDiv.innerHTML = html + `</div>`;
 
-  // 2. 월간 리포트 영역에 실제 달력 주입
-  const monthReportArea = $("#month_calendar_placeholder", appMain);
-  if(monthReportArea) {
-    monthReportArea.innerHTML = generateCalendarHTML();
-  }
+  const monthArea = $("#month_calendar_placeholder", appMain);
+  if(monthArea) monthArea.innerHTML = generateCalendarHTML();
 }
 
-// ★ 달력 생성기 (자바스크립트로 HTML 생성) ★
 function generateCalendarHTML() {
   const date = new Date();
   const year = date.getFullYear();
-  const month = date.getMonth(); // 0~11
-  
+  const month = date.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const lastDate = new Date(year, month + 1, 0).getDate();
   const todayDate = date.getDate();
 
   let html = `
     <div style="width:100%; max-width:400px; margin:0 auto;">
-      <div style="font-weight:800; font-size:1.2rem; margin-bottom:10px; color:var(--sec);">${year}년 ${month+1}월</div>
+      <div style="font-weight:800; font-size:1.2rem; margin-bottom:10px; color:var(--sec); text-align:center;">${year}년 ${month+1}월</div>
       <div class="cal_grid_head">
         <div class="cal_head_cell" style="color:#E53E3E">일</div>
         <div class="cal_head_cell">월</div><div class="cal_head_cell">화</div><div class="cal_head_cell">수</div><div class="cal_head_cell">목</div><div class="cal_head_cell">금</div>
@@ -185,21 +173,16 @@ function generateCalendarHTML() {
       </div>
       <div class="cal_grid_body">
   `;
-  
-  // 빈칸
   for(let i=0; i<firstDay; i++) html += `<div></div>`;
-  
-  // 날짜
   for(let i=1; i<=lastDate; i++) {
     const isToday = i === todayDate ? 'today' : '';
-    // 랜덤 출석 점 (오늘 이전 날짜)
     const dot = (i <= todayDate && Math.random() > 0.3) ? `<div class="cal_dot"></div>` : "";
     html += `<div class="cal_cell ${isToday}">${i} ${dot}</div>`;
   }
-  html += `</div></div>`;
-  return html;
+  return html + `</div></div>`;
 }
 
+// ★ 완료 라벨(배지) 렌더링 복구 ★
 function renderContentList(type) {
   const titleMap = { cognitive:"오늘의 인지콕", mind:"마음 체크리스트", review:"복습 활동", gym:"건강 체조", origami:"종이 접기" };
   $("[data-bind='list_title']", appMain).textContent = titleMap[type] || "활동 목록";
@@ -207,43 +190,38 @@ function renderContentList(type) {
   const list = state.contents[type] || state.contents.cognitive;
   const rail = $(".content_rail", appMain);
   
-  rail.innerHTML = list.map(item => `
+  rail.innerHTML = list.map(item => {
+    // 완료 여부 체크
+    const isDone = state.completed.has(item.id);
+    const badge = isDone ? `<div class="done_badge">완료</div>` : "";
+    
+    return `
     <button class="rail_item" data-action="play" data-id="${item.id}">
       <div class="thumb_box">
         <img src="/m/assets/thumb_${item.id}.png" style="display:none;" onload="this.style.display='block'">
         <span style="font-size:3rem;">▶</span>
-      </div>
+        ${badge} </div>
       <strong style="font-size:1.1rem; color:var(--sec);">${item.title}</strong>
-    </button>`).join("");
+    </button>`;
+  }).join("");
 }
 
-// ★ 플레이어 & HTTPS 믹스드 콘텐츠 해결 ★
 function renderPlayer(item) {
   if(!item) return;
-  state.completed.add(item.id);
-  
   const area = $("#player_area", appMain);
-  let src = "";
-  
-  // 1. 유튜브
+  // (주의) 여기서는 completed 추가 안 함. 버튼 눌러야 추가됨.
+
   if(item.srcType === 'yt') {
     area.innerHTML = `<iframe src="https://www.youtube.com/embed/${item.url}?autoplay=1" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>`;
-  } 
-  // 2. HTML 콘텐츠 (HTTP 문제 해결)
-  else {
-    // HTTPS 환경에서 HTTP 콘텐츠를 iframe에 넣으면 차단됨.
-    // 해결책: 데모용 Blob HTML을 만들어서 보여주거나, 경고문 표시.
+  } else {
     if (location.protocol === 'https:') {
       area.innerHTML = `
         <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; text-align:center;">
-          <p style="font-size:1.2rem; margin-bottom:10px;">🔒 보안상의 이유로 HTTPS 환경에서<br>외부 HTTP 콘텐츠를 바로 열 수 없습니다.</p>
-          <a href="http://brand.kidscokmini.com/data/kidscok_data/silver/${item.url}" target="_blank" class="btn_pill btn_primary" style="text-decoration:none; display:inline-block;">새 창에서 콘텐츠 열기</a>
-        </div>
-      `;
+          <p style="font-size:1.2rem; margin-bottom:10px;">🔒 HTTPS 보안: 외부 콘텐츠 차단됨</p>
+          <a href="http://brand.kidscokmini.com/data/kidscok_data/silver/${item.url}" target="_blank" class="btn_pill btn_primary" style="text-decoration:none;">새 창에서 열기</a>
+        </div>`;
     } else {
-      // 로컬호스트(http)에서는 정상 작동
-      src = `http://brand.kidscokmini.com/data/kidscok_data/silver/${item.url}`;
-      area.innerHTML = `<iframe src="${src}" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>`;
+      area.innerHTML = `<iframe src="http://brand.kidscokmini.com/data/kidscok_data/silver/${item.url}" style="width:100%; height:100%; border:0;" allowfullscreen></iframe>`;
     }
   }
 }
@@ -266,25 +244,26 @@ function openModal(title, src, type) {
   
   let contentHtml = "";
   if (type === 'cal') {
-    // 실제 달력 생성
     contentHtml = `<div style="padding:2rem;">${generateCalendarHTML()}</div>`;
   } else {
-    // 이미지 (계획안)
-    contentHtml = `<div style="padding:0; max-height:80vh; overflow-y:auto; min-height:300px; background:#eee; display:flex; align-items:center; justify-content:center;">
-        <img src="${src}" onerror="this.style.display='none'; this.parentElement.innerHTML='<p>이미지가 없습니다<br>(${src})</p>'" style="width:100%;">
+    // 이미지 모달
+    contentHtml = `<div style="padding:0; max-height:80vh; overflow-y:auto; min-height:300px; background:#f8f9fa; display:flex; align-items:center; justify-content:center;">
+        <img src="${src}" onerror="this.parentElement.innerHTML='<div style=\\'padding:2rem; color:#aaa; text-align:center;\\'>이미지가 없습니다<br>(${src})</div>'" style="width:100%;">
       </div>`;
   }
 
   m.innerHTML = `
     <div class="modal_bg"></div>
     <div class="modal_content">
-      <div class="modal_head"><span>${title}</span><button data-action="close_modal" style="font-size:1.5rem;">&times;</button></div>
+      <div class="modal_head">
+        <span>${title}</span>
+        <button data-action="close_modal" style="font-size:1.5rem;">&times;</button>
+      </div>
       ${contentHtml}
     </div>`;
   appDom.appendChild(m);
 }
 
-// PC 드래그 스크롤
 function enableDragScroll() {
   document.querySelectorAll('.drag_scroll').forEach(slider => {
     let isDown = false, startX, scrollLeft;
