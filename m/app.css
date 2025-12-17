@@ -1,28 +1,89 @@
 @import url("https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css");
 
 :root {
-	--pri: #ED6663; /* 카민 핑크 */
-	--sec: #0F4C81; /* 클래식 블루 */
-	--bg: #F0F3F7; 
-	--card: #FFFFFF;
-	--line: #E2E8F0;
-	--text-main: #1A202C;
-	--text-sub: #4A5568;
-	--radius: 24px;
-	--shadow: 0 12px 30px rgba(15, 76, 129, 0.08);
+  /* Somz Identity Colors */
+  --pri: #ED6663;  /* Carmine Pink */
+  --sec: #0F4C81;  /* Classic Blue */
+  
+  /* Backgrounds & Text */
+  --bg: #F4F7FA;   /* Warm Gray Background */
+  --card: #FFFFFF;
+  --text-main: #2D3748;
+  --text-sub: #718096;
+  --line: #E2E8F0;
+
+  /* UI Specs */
+  --radius: 24px;  /* Soft Rounding */
+  --shadow: 0 10px 30px rgba(15, 76, 129, 0.08);
 }
 
-/* 기본 설정 */
+/* Base Reset */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html { font-size: 18px; height: 100%; }
-body { 
-	margin: 0; height: 100%; width: 100vw; overflow: hidden;
-	font-family: "Wanted Sans Variable", sans-serif; 
-	background: var(--bg); color: var(--text-main); 
-	letter-spacing: -0.02em;
-}
-button { font-family: inherit; border: 0; background: none; cursor: pointer; }
+html { font-size: 18px; } /* Senior Friendly: Base 18px */
+body { font-family: "Wanted Sans Variable", sans-serif; color: var(--text-main); line-height: 1.4; }
+button { font-family: inherit; border: 0; background: none; cursor: pointer; padding: 0; }
 img { display: block; max-width: 100%; }
+.hidden { display: none !important; }
 
-/* SPA 컨테이너 가로 고정 느낌 유지 */
-#spa_root { height: 100vh; display: flex; flex-direction: column; }
+/* 1. Layout Structure */
+.nav_bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 2rem; height: 80px;
+  background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 100;
+}
+.app_content {
+  flex: 1; overflow-y: auto; padding: 2rem;
+  width: 100%; max-width: 1200px; margin: 0 auto; /* Tablet Landscape Width */
+}
+
+/* 2. Components: Cards & Buttons */
+.btn_pill {
+  padding: 0.8rem 1.6rem; border-radius: 14px;
+  font-weight: 800; font-size: 0.95rem;
+  background: #EEF2F6; color: var(--sec);
+  transition: 0.2s;
+}
+.btn_pill:active { transform: scale(0.96); }
+
+/* 3. Grid Systems */
+/* 4-Column Grid for Profile Select */
+.grid_4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+
+/* 2-Column Grid for Content List */
+.grid_2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+
+/* Sidebar Layout for Home */
+.layout_sidebar { display: grid; grid-template-columns: 340px 1fr; gap: 2rem; align-items: start; }
+
+/* 4. Styled Elements */
+.card_box {
+  background: var(--card); border-radius: var(--radius);
+  padding: 2rem; box-shadow: var(--shadow);
+  text-align: center; border: 3px solid transparent;
+  transition: 0.2s; position: relative; overflow: hidden;
+}
+.card_box:active { transform: scale(0.98); }
+.card_box.active { border-color: var(--pri); }
+
+.menu_item {
+  background: var(--card); border-radius: var(--radius);
+  padding: 2rem; box-shadow: var(--shadow);
+  text-align: left; min-height: 180px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  cursor: pointer; transition: 0.2s;
+}
+.menu_item:active { transform: scale(0.98); }
+.menu_item strong { font-size: 1.4rem; font-weight: 800; color: var(--sec); }
+.menu_item p { font-size: 1rem; color: var(--text-sub); margin-top: 0.5rem; }
+
+/* Highlight Style */
+.menu_item.primary { background: var(--sec); color: #fff; }
+.menu_item.primary strong { color: #fff; }
+.menu_item.primary p { color: rgba(255,255,255,0.7); }
+
+/* Modal */
+.modal_overlay { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); }
+.modal_box { background: #fff; width: 90%; max-width: 800px; border-radius: var(--radius); overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.2); }
+.modal_head { padding: 1.2rem 2rem; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 1.2rem; }

@@ -1,110 +1,117 @@
-<style>
-	.nav_bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; background: #fff; border-bottom: 1px solid var(--line); height: 80px; }
-	.app_container { width: 100%; max-width: 1100px; margin: 0 auto; padding: 2rem; }
-	.hidden { display: none !important; }
-	
-	/* Profile Cards */
-	.select_grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
-	.select_user_card { background: #fff; border-radius: var(--radius); padding: 2rem 1rem; display: flex; flex-direction: column; align-items: center; box-shadow: var(--shadow); border: 3px solid transparent; }
-	.select_user_card img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; }
-	
-	/* Home Layout */
-	.home_layout { display: grid; grid-template-columns: 300px 1fr; gap: 2rem; }
-	.home_profile_side { background: #fff; padding: 2.5rem 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); text-align: center; border-top: 8px solid var(--pri); }
-	.home_profile_side img { width: 150px; height: 150px; border-radius: 50%; margin-bottom: 1rem; }
-	
-	/* Content Items */
-	.home_menu_grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
-	.home_menu_item { background: #fff; padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow); text-align: left; min-height: 180px; }
-	.home_menu_item.highlight { background: var(--sec); color: #fff; }
-	
-	/* Modal */
-	.modal_wrap { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }
-	.modal_backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
-	.modal_box { position: relative; background: #fff; border-radius: var(--radius); overflow: hidden; }
-	.modal_head { padding: 1rem 1.5rem; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; }
-	
-	.app_btn_pill { padding: 0.8rem 1.5rem; border-radius: 14px; font-weight: 800; cursor: pointer; border: 0; background: #f1f5f9; color: var(--sec); }
-</style>
+<style>@import url('/m/app.css');</style>
 
 <nav class="nav_bar">
-	<div data-role="title" style="font-weight:900; font-size:1.4rem; color:var(--sec);">실버콕</div>
-	<div style="display:flex; gap:10px;">
-		<button class="app_btn_pill" data-action="plan">📅 계획안</button>
-		<button class="app_btn_pill" data-action="logout">로그아웃</button>
-	</div>
+  <div data-role="title" style="font-weight:900; font-size:1.4rem; color:var(--sec);">실버콕 관리자</div>
+  <div style="display:flex; gap:10px;">
+    <button class="btn_pill" data-action="plan">📅 주간 계획안</button>
+    <button class="btn_pill" data-action="calendar">🗓️ 전체 달력</button>
+    <button class="btn_pill" data-action="logout" style="background:#fff; border:1px solid #ddd;">로그아웃</button>
+  </div>
 </nav>
 
-<main class="app_container">
-	</main>
+<main class="app_content">
+  </main>
 
 <template id="t_profile_select">
-	<div style="text-align:center; margin-bottom:2rem;"><h2>반갑습니다! 어르신을 선택해주세요.</h2></div>
-	<div class="select_grid profile-grid">
-		<button class="select_user_card" style="border:2px dashed #ccc; background:none;" data-action="add_elder">
-			<span style="font-size:3rem; color:#ccc;">+</span>
-			<strong>어르신 등록</strong>
-		</button>
-	</div>
+  <div style="text-align:center; margin-bottom:2.5rem;">
+    <h2 style="font-size:2rem; font-weight:800; color:var(--sec);">어르신을 선택해주세요</h2>
+    <p style="color:var(--text-sub);">오늘 활동을 진행할 파트너를 선택합니다.</p>
+  </div>
+  
+  <div class="grid_4 profile-grid">
+    <button class="card_box" style="border: 2px dashed #CBD5E0; box-shadow:none;" data-action="add_elder">
+      <div style="font-size:3rem; color:#A0AEC0; margin-bottom:10px;">+</div>
+      <strong style="color:#A0AEC0;">신규 등록</strong>
+    </button>
+  </div>
 </template>
 
 <template id="t_profile_add">
-	<div style="max-width:500px; margin: 0 auto; background:#fff; padding:3rem; border-radius:24px; text-align:center;">
-		<div data-action="trigger_file" style="cursor:pointer; margin-bottom:1.5rem;">
-			<img id="preview_img" src="https://via.placeholder.com/150?text=사진추가" style="width:140px; height:140px; border-radius:50%; border:4px solid var(--line);">
-		</div>
-		<input type="file" id="elder_file" class="hidden" onchange="handleFile(this)" accept="image/*">
-		<input type="text" id="elder_name_input" placeholder="성함을 입력하세요" style="width:100%; padding:1rem; border:2px solid #eee; border-radius:12px; margin-bottom:1.5rem;">
-		<div style="display:flex; gap:10px;">
-			<button class="app_btn_pill" data-action="home" style="flex:1;">취소</button>
-			<button class="app_btn_pill" data-action="save_elder" style="flex:2; background:var(--pri); color:#fff;">등록 완료</button>
-		</div>
-	</div>
+  <div style="max-width:500px; margin:0 auto;">
+    <div class="card_box">
+      <h2 style="margin-bottom:2rem; color:var(--sec);">신규 어르신 등록</h2>
+      
+      <div data-action="trigger_file" style="cursor:pointer; margin-bottom:1.5rem; display:inline-block;">
+        <img id="preview_img" src="https://via.placeholder.com/150?text=사진등록" style="width:140px; height:140px; border-radius:50%; object-fit:cover; border:4px solid #f1f1f1;">
+        <p style="font-size:0.9rem; color:var(--pri); margin-top:10px;">📸 사진을 눌러 추가하세요</p>
+      </div>
+      <input type="file" id="elder_file" class="hidden" onchange="handleFile(this)" accept="image/*">
+      
+      <div style="text-align:left; margin-bottom:2rem;">
+        <label style="display:block; font-weight:800; margin-bottom:0.5rem;">성함</label>
+        <input type="text" id="elder_name_input" placeholder="성함을 입력하세요" style="width:100%; padding:1rem; border-radius:12px; border:2px solid #eee; font-size:1rem;">
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <button class="btn_pill" data-action="home" style="flex:1;">취소</button>
+        <button class="btn_pill" data-action="save_elder" style="flex:2; background:var(--pri); color:#fff;">등록 완료</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <template id="t_person_home">
-	<div class="home_layout">
-		<aside class="home_profile_side">
-			<img src="" data-bind="elder_img">
-			<h3 data-bind="elder_name">성함</h3>
-			<div style="display:flex; flex-direction:column; gap:10px; margin-top:2rem;">
-				<button class="app_btn_pill" data-action="view_weekly">📅 주간 스케줄</button>
-				<button class="app_btn_pill" data-action="view_monthly">🗓️ 월간 달력</button>
-				<button class="app_btn_pill" data-action="calendar" style="background:var(--sec); color:#fff;">전체일정표</button>
-				<button class="app_btn_pill" data-action="home" style="margin-top:1rem; font-size:0.8rem;">어르신 변경</button>
-			</div>
-		</aside>
-		
-		<div class="home_main_view">
-			<div class="weekly_view">
-				<div class="home_menu_grid">
-					<button class="home_menu_item highlight" data-action="open_today_cog"><strong>오늘의 인지콕</strong><p>매일매일 두뇌운동</p></button>
-					<button class="home_menu_item" data-action="open_review"><strong>인지콕 복습</strong><p>배웠던 내용 다시하기</p></button>
-				</div>
-			</div>
-			<div class="monthly_view hidden">
-				<div style="background:#fff; padding:2rem; border-radius:24px; text-align:center;">
-					<p style="margin-bottom:1rem; font-weight:800;">12월 전체 활동 현황</p>
-					<div style="background:#f8f9fa; height:300px; display:flex; align-items:center; justify-content:center; border-radius:12px; border:2px dashed #ddd;">월간 캘린더 컴포넌트 위치</div>
-				</div>
-			</div>
-		</div>
-	</div>
+  <div class="layout_sidebar">
+    <aside class="card_box" style="padding: 2.5rem 1.5rem; border-top: 8px solid var(--pri);">
+      <img src="" data-bind="elder_img" style="width:140px; height:140px; border-radius:50%; object-fit:cover; margin:0 auto 1.5rem;">
+      <h3 data-bind="elder_name" style="font-size:1.8rem; font-weight:800; margin-bottom:0.5rem;">이름</h3>
+      <span style="background:rgba(237,102,99,0.1); color:var(--pri); padding:5px 12px; border-radius:10px; font-weight:700;">오늘의 파트너</span>
+      
+      <div style="margin-top:2.5rem; display:flex; flex-direction:column; gap:10px;">
+        <button class="btn_pill" data-action="view_weekly" style="background:var(--sec); color:#fff;">주간 스케줄</button>
+        <button class="btn_pill" data-action="view_monthly">월간 리포트</button>
+        <button class="btn_pill" data-action="home" style="margin-top:2rem; font-size:0.9rem;">↩ 어르신 변경</button>
+      </div>
+    </aside>
+
+    <div class="home_main">
+      <div class="view_weekly">
+        <h3 style="margin-bottom:1.5rem; font-size:1.4rem;">오늘의 추천 활동</h3>
+        <div class="grid_2">
+          <button class="menu_item primary" data-action="open_today_cog">
+            <div>
+              <strong>오늘의 인지콕</strong>
+              <p>매일 새로운 두뇌 훈련</p>
+            </div>
+            <div style="text-align:right; font-size:2rem;">🧠</div>
+          </button>
+          <button class="menu_item" data-action="open_review">
+            <div>
+              <strong>인지콕 복습</strong>
+              <p>지난 활동 다시 보기</p>
+            </div>
+            <div style="text-align:right; font-size:2rem;">↺</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="view_monthly hidden">
+        <div class="card_box">
+          <h3 style="margin-bottom:1rem;">월간 활동 현황</h3>
+          <div style="height:300px; background:#f8f9fa; border-radius:12px; display:flex; align-items:center; justify-content:center; border:2px dashed #ddd;">
+            (월간 캘린더 컴포넌트가 들어갈 자리)
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
-<template id="t_content_list_cognitive_today">
-	<div style="margin-bottom:2rem;"><h2>오늘의 인지콕 목록</h2></div>
-	<div class="home_menu_grid">
-		<button class="home_menu_item" data-action="play" data-content-id="today_01"><strong>단어 퀴즈</strong></button>
-		<button class="home_menu_item" data-action="play" data-content-id="today_02"><strong>기억력 훈련</strong></button>
-	</div>
-	<button class="app_btn_pill" data-action="close_play" style="margin-top:2rem;">↩ 돌아가기</button>
+<template id="t_content_list">
+  <div style="margin-bottom:2rem; display:flex; justify-content:space-between; align-items:center;">
+    <h2 data-bind="list_title" style="font-size:1.8rem; font-weight:800; color:var(--sec);">활동 목록</h2>
+    <button class="btn_pill" data-action="back_to_person">↩ 뒤로가기</button>
+  </div>
+  
+  <div class="grid_2 content_grid">
+    </div>
 </template>
 
 <template id="t_content_player">
-	<div id="player_area" style="background:#000; border-radius:24px; width:100%; aspect-ratio:16/9; overflow:hidden;"></div>
-	<div style="display:flex; justify-content:center; gap:20px; margin-top:2rem;">
-		<button class="app_btn_pill" data-action="close_play" style="padding:1rem 3rem;">그만하기</button>
-		<button class="app_btn_pill" data-action="done_content" style="padding:1rem 4rem; background:var(--pri); color:#fff;">완료하기</button>
-	</div>
+  <div id="player_area" style="background:#000; border-radius:24px; width:100%; aspect-ratio:16/9; overflow:hidden; box-shadow:var(--shadow);">
+    </div>
+  <div style="display:flex; justify-content:center; gap:20px; margin-top:2.5rem;">
+    <button class="btn_pill" data-action="close_play" style="padding:1rem 3rem;">종료하기</button>
+    <button class="btn_pill" data-action="done_content" style="padding:1rem 4rem; background:var(--pri); color:#fff;">활동 완료</button>
+  </div>
 </template>
