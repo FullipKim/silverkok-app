@@ -1,17 +1,34 @@
 <style>
-@import url('m/app.css');
-  main{margin: auto;}
-  main>div{display:flex;flex-direction:column;align-items:center;gap:16px}
-  main img{width:160px;opacity:0;transform:translateY(10px) scale(.98);animation:logo 2.2s ease forwards}
-  #login_start{opacity:0;transform:translateY(8px);animation:btn .5s ease forwards;animation-delay:2.2s;padding:14px 18px;border-radius:12px;border:0;background:#111;color:#fff;font-size:16px;font-weight:800;cursor:pointer}
-  #login_start:active{transform:translateY(9px)}
-  @keyframes logo{to{opacity:1;transform:none}}
-  @keyframes btn{to{opacity:1;transform:none}}
-  @media(prefers-reduced-motion:reduce){main img,#login_start{animation:none;opacity:1;transform:none}}
+  @import url('/m/app.css');
+  /* JS 주입 시 레이아웃 깨짐 방지 */
+  .login_container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100vh;
+    background: #f5f5f5;
+  }
+  .login_container div { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  .login_container img {
+    width: 180px; opacity: 0; transform: translateY(10px);
+    animation: logoFade 1.5s ease forwards;
+  }
+  #login_start {
+    opacity: 0; animation: btnFade 0.5s ease forwards; animation-delay: 1.5s;
+    padding: 16px 32px; border-radius: 12px; border: 0; background: #111; color: #fff;
+    font-size: 18px; font-weight: 800; cursor: pointer;
+  }
+  @keyframes logoFade { to { opacity: 1; transform: translateY(0); } }
+  @keyframes btnFade { to { opacity: 1; transform: translateY(0); } }
 </style>
-<main>
-  <div>
-    <img src="m/assets/logo.svg" alt="SilverKok">
-    <button id="login_start" type="button">실버콕 시작하기</button>
-  </div>
-</main>
+
+<div class="login_container">
+  <main>
+    <div>
+      <img src="/m/assets/logo.svg" alt="SilverKok">
+      <button id="login_start" type="button">실버콕 시작하기</button>
+    </div>
+  </main>
+</div>
