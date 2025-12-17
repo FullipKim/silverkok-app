@@ -1,500 +1,207 @@
-// app.mjs
-// - index.html에서 Start() 실행
-// - /m/app.html을 불러오고, 그 안의 <template>들을 main에 꽂아 화면 전환
-// - 템플릿 내부의 h1 텍스트를 nav.topbar strong에 자동으로 넣음 (h1은 화면에서 제거)
+// app.mjs (ROOT)
+// index.html 안에서만 동작하는 SPA 관리자
+// - index가 "큰 액자"
+// - m/login.html, m/app.html은 "끼워 넣는 화면 조각"
+// - template들은 m/app.html 안에 있고, main에 갈아끼움
 
-let view = "profile_select";
-let state = {
-	selectedElder: null,
-	profiles: [
-		{ id:"p1", name:"김영자", img:"https://images.unsplash.com/photo-1520975958224-8ec3280b75ef?auto=format&fit=crop&w=400&q=60" },
-		{ id:"p2", name:"이순자", img:"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=400&q=60" },
-		{ id:"p3", name:"박춘자", img:"https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=400&q=60" },
-		{ id:"p4", name:"정말례", img:"https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=400&q=60" },
-		{ id:"p5", name:"최금순", img:"https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=400&q=60" },
-		{ id:"p6", name:"한복례", img:"https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=400&q=60" }
-	],
-	attendance: {}, // yyyy-mm-dd: true/false
-	completed: {}   // contentKey: true
-};
+const $ = (sel, root = document) => root.querySelector(sel);
 
-// ---------- tiny helpers ----------
-const $ = (sel, root=document)=>root.querySelector(sel);
-const $$ = (sel, root=document)=>Array.from(root.querySelectorAll(sel));
+let rootEl = null;       // index <body>에 만들어둘 컨테이너
+let frameEl = null;      // 현재 꽂힌 m/login 또는 m/app 프레임 DOM
+let frameCache = {};     // { login: "<html...>", app: "<html...>" }
 
-function mainEl(){ return $("main"); }
-function topTitleEl(){ return $("nav.topbar .topbar-left strong"); }
-function tpl(id){ return document.getElementById(id).content.cloneNode(true); }
+let appDom = null;       // m/app.html이 꽂힌 뒤의 "현재 프레임" 루트
+let appMain = null;      // m/app.html 안의 <main>
+let appNav = null;       // m/app.html 안의 <nav>
 
-function setTopTitle(txt=""){
-	const el = topTitleEl();
-	if(el) el.textContent = txt || "";
+// ===============
+// Public entry
+// ===============
+export async function Start() {
+  // 1) index.html body에 컨테이너 만들기
+  if (!rootEl) {
+    rootEl = document.createElement("div");
+    rootEl.id = "spa_root";
+    document.body.replaceChildren(rootEl);
+  }
+
+  // 2) 프레임(로그인/앱) 소스 미리 로드
+  await preloadFrames();
+
+  // 3) 항상 "로그인부터" 시작 (꼬임 방지: 세션/해시 무시)
+  await ShowFrame("login");
 }
 
-function mountTemplate(tid, titleFallback=""){
-	const t = document.getElementById(tid);
-	const frag = t.content.cloneNode(true);
+// ===================
+// Frame loader
+// ===================
+async function preloadFrames() {
+  // 경로는 "루트 index 기준" 절대경로로 고정(배포/로컬 모두 안정)
+  // - 네가 m 폴더를 쓰니까 /m/login.html, /m/app.html
+  const map = { login: "/m/login.html", app: "/m/app.html" };
 
-	// 1. data-title
-	let title = t.dataset.title || "";
-
-	// 2. h1 (있으면)
-	if(!title){
-		const h1 = frag.querySelector("h1");
-		if(h1){
-			title = h1.textContent.trim();
-			h1.remove(); // 화면 중복 방지
-		}
-	}
-
-	// 3. fallback
-	if(!title) title = titleFallback || "";
-
-	mainEl().replaceChildren(frag);
-	if(title) setTopTitle(title);
+  for (const k of Object.keys(map)) {
+    if (frameCache[k]) continue;
+    const res = await fetch(map[k], { cache: "no-store" });
+    frameCache[k] = await res.text();
+  }
 }
 
-// ---------- storage ----------
-const LS_KEY = "silverkok_mvp_state_v1";
-function saveState(){
-	try{ localStorage.setItem(LS_KEY, JSON.stringify({ profiles: state.profiles, attendance: state.attendance, completed: state.completed })); }catch(e){}
-}
-function loadState(){
-	try{
-		const raw = localStorage.getItem(LS_KEY);
-		if(!raw) return;
-		const s = JSON.parse(raw);
-		if(s?.profiles) state.profiles = s.profiles;
-		if(s?.attendance) state.attendance = s.attendance;
-		if(s?.completed) state.completed = s.completed;
-	}catch(e){}
-}
+async function ShowFrame(kind) {
+  // kind: "login" | "app"
+  rootEl.innerHTML = frameCache[kind];
 
-// ---------- date helpers ----------
-function pad(n){ return String(n).padStart(2,"0"); }
-function ymd(d){
-	return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-}
-function startOfWeek(d){ // 월요일 시작
-	const x = new Date(d);
-	const day = (x.getDay()+6)%7; // Mon=0
-	x.setDate(x.getDate()-day);
-	x.setHours(0,0,0,0);
-	return x;
+  // rootEl 안에 실제 첫 엘리먼트를 frameEl로 잡음
+  frameEl = rootEl.firstElementChild;
+
+  // login/app 공통: 기본 스크롤/포커스 정리
+  window.scrollTo(0, 0);
+
+  if (kind === "login") {
+    bindLoginFrame();
+  } else {
+    bindAppFrame();
+    ShowScreen("t_profile_select"); // app 들어오면 첫 템플릿 고정
+  }
 }
 
-// ---------- Frame load ----------
-async function ShowFrame(){
-	const res = await fetch("/m/app.html", { cache:"no-store" });
-	const html = await res.text();
+// ===================
+// Login
+// ===================
+function bindLoginFrame() {
+  // login.html 내부 요소는 여기에서만 다룸
+  const startBtn = $("#login_start", rootEl);
 
-	// index.html <body> 가 비어있으니 app.html 전체를 body에 꽂음
-	document.body.innerHTML = html;
+  // 혹시 login_start가 없으면(파일 수정 실수) 앱으로 넘어가버리는 꼬임 방지
+  if (!startBtn) return;
 
-	// 이벤트는 1회만 바인딩
-	bindAppEvents();
+  // introView/loginView 같은 구조를 쓰면 여기에서 토글 가능
+  // 지금은 "CSS로만" 애니메이션 한다는 전제라 JS는 최소만:
+  startBtn.addEventListener("click", async () => {
+    await ShowFrame("app");
+  }, { once: true });
 }
 
-// ---------- View ----------
-function ShowView(next, payload={}){
-	view = next;
+// ===================
+// App
+// ===================
+function bindAppFrame() {
+  appDom = rootEl;                 // m/app.html이 rootEl 안에 그대로 들어옴
+  appMain = $("main", appDom);
+  appNav = $("nav", appDom);
 
-	// login은 m/login.html로 이동 (SPA 밖)
-	if(next==="login"){
-		setTopTitle("");
-		mainEl().replaceChildren();
-		location.href = "/m/login.html";
-		return;
-	}
+  // main이 없으면 템플릿을 꽂을 곳이 없어서 오류남 (너가 겪은 innerHTML null)
+  if (!appMain) throw new Error("m/app.html 안에 <main>이 없습니다.");
 
-	// 프로필 선택
-	if(next==="profile_select"){
-		mountTemplate("t_profile_select","프로필 선택");
-		renderProfileGrid();
-		return;
-	}
-
-	// 어르신 추가 폼
-	if(next==="profile_add"){
-		mountTemplate("t_profile_add","어르신 추가");
-		bindAddForm();
-		return;
-	}
-
-	// 어르신 홈(개인 프로필/주간/과목)
-	if(next==="elder_home"){
-		mountTemplate("t_elder_home", payload?.name ? payload.name : "어르신");
-		renderElderHome(payload);
-		return;
-	}
-
-	// 과목 들어가서 콘텐츠 리스트
-	if(next==="content_list"){
-		mountTemplate("t_content_list", payload?.title || "콘텐츠");
-		renderContentList(payload);
-		return;
-	}
-
-	// 콘텐츠 플레이어
-	if(next==="content_player"){
-		mountTemplate("t_content_player", payload?.title || "콘텐츠");
-		renderContentPlayer(payload);
-		return;
-	}
-
-	console.warn("Unknown view:", next);
+  // (중요) 이벤트는 전부 "위임"으로 1번만 바인딩 (템플릿 갈아껴도 안죽음)
+  appDom.addEventListener("click", onAppClick);
 }
 
-// ---------- Events (delegation) ----------
-function bindAppEvents(){
-	// topbar 버튼들
-	document.addEventListener("click", (e)=>{
-		const btn = e.target.closest("button,[data-action],[data-go]");
-		if(!btn) return;
+function onAppClick(e) {
+  const btn = e.target.closest("button,[data-action],[data-go]");
+  if (!btn) return;
 
-		// topbar: home/logout
-		const act = btn.dataset.action;
-		if(act==="home"){
-			state.selectedElder = null;
-			ShowView("profile_select");
-			return;
-		}
-		if(act==="logout"){
-			state.selectedElder = null;
-			ShowView("login");
-			return;
-		}
+  // 1) nav 영역 버튼들
+  const action = btn.getAttribute("data-action");
+  if (action) {
+    if (action === "logout") return ShowFrame("login");
+    if (action === "home") return ShowScreen("t_profile_select");
+    if (action === "plan") return openPlanModal();
+    if (action === "add") return ShowScreen("t_profile_add");
+    if (action === "close_plan") return closePlanModal();
+    return;
+  }
 
-		// 프로필 선택: 계획안/추가
-		if(act==="plan"){ openPlanModal(); return; }
-		if(act==="add"){ ShowView("profile_add"); return; }
-
-		// 모달 닫기
-		if(act==="close_plan"){ closePlanModal(); return; }
-		if(act==="close_month"){ closeMonthModal(); return; }
-
-		// 프로필 카드 클릭
-		const pid = btn.dataset.goProfile;
-		if(pid){
-			const p = state.profiles.find(x=>x.id===pid);
-			if(!p) return;
-			state.selectedElder = p;
-			ShowView("elder_home", p);
-			return;
-		}
-
-		// 과목(카드) 클릭 -> 리스트로
-		const subject = btn.dataset.goSubject;
-		if(subject){
-			const title = btn.dataset.title || subject;
-			ShowView("content_list", { subject, title });
-			return;
-		}
-
-		// 리스트에서 콘텐츠 클릭 -> 플레이어
-		const contentKey = btn.dataset.goContent;
-		if(contentKey){
-			const title = btn.dataset.title || "콘텐츠";
-			const url = btn.dataset.url || "";
-			ShowView("content_player", { contentKey, title, url });
-			return;
-		}
-
-		// 플레이어 완료 처리
-		if(act==="complete"){
-			const key = btn.dataset.contentKey;
-			if(key){
-				state.completed[key] = true;
-				saveState();
-				// 뒤로(리스트로) 복귀
-				const backSubject = btn.dataset.backSubject;
-				const backTitle = btn.dataset.backTitle;
-				ShowView("content_list", { subject: backSubject, title: backTitle });
-			}
-			return;
-		}
-
-		// 뒤로가기
-		if(act==="back_elder"){
-			if(state.selectedElder) ShowView("elder_home", state.selectedElder);
-			return;
-		}
-	});
+  // 2) 템플릿 내 이동(프로필 카드 클릭 등)
+  const go = btn.getAttribute("data-go");
+  if (go) {
+    // 예: data-go="t_person_home"
+    //     data-name="김영자"
+    const name = btn.getAttribute("data-name") || "";
+    return ShowScreen(go, { name });
+  }
 }
 
-// ---------- Profile select ----------
-function renderProfileGrid(){
-	const grid = $(".profile-grid");
-	if(!grid) return;
+function ShowScreen(templateId, data = {}) {
+  // templateId는 m/app.html 내부 <template id="..."> 를 의미
+  const t = $(`#${cssEscape(templateId)}`, appDom);
+  if (!t) return;
 
-	grid.innerHTML = state.profiles.map(p=>`
-		<button class="profile-card" type="button" data-go-profile="${p.id}">
-			<img class="avatar" src="${p.img}" alt="">
-			<div class="name">${p.name}</div>
-		</button>
-	`).join("");
+  // 템플릿 복제해서 main에 꽂기
+  const node = t.content.cloneNode(true);
+  appMain.replaceChildren(node);
+
+  // 제목 자동 반영:
+  // - 템플릿 안에 h1이 있으면 그 텍스트를 nav의 strong(또는 첫 div)에 복사
+  // - h1이 없다면, data.title 또는 기존 유지
+  syncTopbarTitle(data);
+
+  // 화면별 데이터 주입(최소만)
+  // - 어르신 홈 화면에 이름 표시 같은 것들
+  if (templateId === "t_person_home" && data.name) {
+    const nameEl = $("[data-bind='elder_name']", appMain);
+    if (nameEl) nameEl.textContent = data.name;
+  }
 }
 
-// ---------- Plan modal ----------
-function openPlanModal(){
-	const host = document.body;
-	if($("#plan_modal")) return;
+function syncTopbarTitle(data = {}) {
+  // nav.topbar-left strong 우선, 없으면 nav 첫 div로 폴백
+  const strong = $(".topbar-left strong", appDom) || $("nav strong", appDom);
+  const leftBox = strong || $("nav div:first-child", appDom);
 
-	const el = document.createElement("div");
-	el.id = "plan_modal";
-	el.innerHTML = `
-		<div class="modal-dim" data-action="close_plan"></div>
-		<div class="modal-card">
-			<div class="modal-head">
-				<strong>계획안</strong>
-				<button class="pill" data-action="close_plan" type="button">닫기</button>
-			</div>
-			<div class="modal-body">
-				<img src="https://images.unsplash.com/photo-1581091870627-3af39f5c7b5f?auto=format&fit=crop&w=1200&q=60" alt="plan" style="width:100%;border-radius:12px;">
-			</div>
-		</div>
-	`;
-	host.appendChild(el);
-}
-function closePlanModal(){
-	const el = $("#plan_modal");
-	if(el) el.remove();
+  if (!leftBox) return;
+
+  // 1) data-title가 있으면 우선 사용
+  if (data.title) {
+    leftBox.textContent = data.title;
+    return;
+  }
+
+  // 2) 현재 main 안의 첫 h1 텍스트를 제목으로 사용
+  const h1 = $("main h1", appDom);
+  if (h1 && h1.textContent.trim()) {
+    leftBox.textContent = h1.textContent.trim();
+    return;
+  }
+
+  // 3) h1이 없으면 "그대로 둠" (너가 말한 케이스)
 }
 
-// ---------- Add form ----------
-function bindAddForm(){
-	const form = $("#add_form");
-	if(!form) return;
+// ===================
+// Plan modal (데모)
+// ===================
+function openPlanModal() {
+  // 이미 떠있으면 중복 생성 방지
+  if ($("[data-plan-modal]", appDom)) return;
 
-	form.addEventListener("submit", (e)=>{
-		e.preventDefault();
+  const wrap = document.createElement("div");
+  wrap.setAttribute("data-plan-modal", "1");
+  wrap.innerHTML = `
+    <div class="modal_backdrop"></div>
+    <div class="modal_panel">
+      <div class="modal_head">
+        <strong>계획안</strong>
+        <button class="pill" data-action="close_plan" type="button">닫기</button>
+      </div>
+      <div class="modal_body">
+        <img src="/m/assets/plan.png" alt="plan" style="width:100%;height:auto;display:block;border-radius:12px">
+      </div>
+    </div>
+  `;
 
-		const fd = new FormData(form);
-		const name = (fd.get("name")||"").toString().trim() || "새 어르신";
-		const img = "https://images.unsplash.com/photo-1520975683890-05f1f4e8d4c6?auto=format&fit=crop&w=400&q=60";
-
-		const id = "p" + Math.random().toString(16).slice(2,8);
-		state.profiles.push({ id, name, img });
-
-		saveState();
-		ShowView("profile_select");
-	});
+  // CSS는 app.css에서 .modal_backdrop/.modal_panel 등으로 이미 갖고 있다는 전제
+  appDom.appendChild(wrap);
 }
 
-// ---------- Elder home (weekly + subjects swipe) ----------
-function renderElderHome(p){
-	// 상단 프로필 영역
-	const nameEl = $("#elder_name");
-	if(nameEl) nameEl.textContent = p?.name || "";
-
-	// 출석 데모: 이번 주 2~4일 랜덤 true
-	seedAttendanceForThisWeek();
-
-	// 주간 캘린더 렌더
-	renderWeekBar();
-
-	// 월간 모달 버튼
-	const monthBtn = $("#btn_month");
-	if(monthBtn){
-		monthBtn.onclick = ()=>openMonthModal();
-	}
-
-	// 과목 스와이프(2페이지)
-	renderSubjectPages();
+function closePlanModal() {
+  const m = $("[data-plan-modal]", appDom);
+  if (m) m.remove();
 }
 
-function seedAttendanceForThisWeek(){
-	const today = new Date();
-	const mon = startOfWeek(today);
-	for(let i=0;i<7;i++){
-		const d = new Date(mon); d.setDate(mon.getDate()+i);
-		const key = ymd(d);
-		if(state.attendance[key]===undefined){
-			state.attendance[key] = Math.random() < 0.45; // 임의
-		}
-	}
-	saveState();
-}
-
-function renderWeekBar(){
-	const wrap = $("#weekbar");
-	if(!wrap) return;
-
-	const today = new Date();
-	const mon = startOfWeek(today);
-	const days = ["월","화","수","목","금","토","일"];
-
-	let html = "";
-	for(let i=0;i<7;i++){
-		const d = new Date(mon); d.setDate(mon.getDate()+i);
-		const key = ymd(d);
-		const ok = !!state.attendance[key];
-		const isToday = ymd(d)===ymd(today);
-
-		html += `
-			<div class="day ${isToday?"today":""}">
-				<div class="md">${d.getMonth()+1}/${d.getDate()}</div>
-				<div class="dw">${days[i]}</div>
-				${ok ? `<img class="stamp" src="/m/complete.svg" alt="">` : ``}
-			</div>
-		`;
-	}
-	wrap.innerHTML = html;
-}
-
-// 2행 2열을 "페이지"로 묶어서 가로 스와이프
-function renderSubjectPages(){
-	const host = $("#subjects_pages");
-	if(!host) return;
-
-	const pages = [
-		[
-			{ key:"cog_today", title:"오늘의 인지콕" },
-			{ key:"mind", title:"마음체크리스트" },
-			{ key:"review", title:"복습활동(인지콕)" },
-			{ key:"exercise", title:"건강체조" }
-		],
-		[
-			{ key:"paper", title:"종이접기" },
-			{ key:"brain", title:"두뇌콕" },
-			{ key:"art", title:"미술콕" },
-			{ key:"focus", title:"집중콕" }
-		]
-	];
-
-	host.innerHTML = pages.map((group, idx)=>`
-		<div class="subpage" aria-label="page-${idx+1}">
-			${group.map(item=>`
-				<button class="subcard" type="button" data-go-subject="${item.key}" data-title="${item.title}">
-					<span>${item.title}</span>
-				</button>
-			`).join("")}
-		</div>
-	`).join("");
-}
-
-// ---------- Month modal ----------
-function openMonthModal(){
-	if($("#month_modal")) return;
-
-	const today = new Date();
-	const y = today.getFullYear();
-	const m = today.getMonth(); // 0-based
-	const first = new Date(y,m,1);
-	const last = new Date(y,m+1,0);
-	const start = new Date(first);
-	start.setDate(first.getDate() - ((first.getDay()+6)%7)); // 월요일 시작으로 맞춤
-
-	let cells = "";
-	for(let i=0;i<42;i++){
-		const d = new Date(start); d.setDate(start.getDate()+i);
-		const key = ymd(d);
-		const inMonth = d.getMonth()===m;
-		const ok = !!state.attendance[key];
-		const isToday = ymd(d)===ymd(today);
-
-		cells += `
-			<div class="mcell ${inMonth?"in":"out"} ${isToday?"today":""}">
-				<div class="num">${d.getDate()}</div>
-				${ok ? `<img class="stamp" src="/m/complete.svg" alt="">` : ``}
-			</div>
-		`;
-	}
-
-	const el = document.createElement("div");
-	el.id = "month_modal";
-	el.innerHTML = `
-		<div class="modal-dim" data-action="close_month"></div>
-		<div class="modal-card">
-			<div class="modal-head">
-				<strong>${y}년 ${m+1}월</strong>
-				<button class="pill" data-action="close_month" type="button">닫기</button>
-			</div>
-			<div class="month-grid">${cells}</div>
-		</div>
-	`;
-	document.body.appendChild(el);
-}
-function closeMonthModal(){
-	const el = $("#month_modal");
-	if(el) el.remove();
-}
-
-// ---------- Content list ----------
-function renderContentList({subject, title}){
-	// subject별로 URL 규칙 적용 (예: 멀티콘텐츠 / 유튜브)
-	// 멀티콘텐츠 예시: .../01m_01w_03s_04.html  같은 패턴으로 번호만 바꿔서 나열
-	// 영상은 건강체조면 유튜브로 고정
-
-	const list = $("#content_grid");
-	if(!list) return;
-
-	const items = [];
-
-	if(subject==="exercise"){
-		// 건강체조: 유튜브 하나로 모두 대체 (8개 동일)
-		for(let i=1;i<=8;i++){
-			items.push({
-				key:`${subject}_${i}`,
-				title:`콘텐츠 ${i}`,
-				url:`https://www.youtube.com/embed/yKn0RgwS8QM`
-			});
-		}
-	}else{
-		// 기본: 멀티콘텐츠 8개 (week/step/seq 일부만 변경)
-		// 예시 기반: 01m_01w_03s_04.html
-		// 여기서는 s(단계)와 마지막 번호를 바꿔서 데모로 구성
-		const base = "http://brand.kidscokmini.com/data/kidscok_data/silver";
-		const w = "01w";
-		const s = "03s";
-		for(let i=1;i<=8;i++){
-			const n = pad(i); // 01..08
-			items.push({
-				key:`${subject}_${i}`,
-				title:`콘텐츠 ${i}`,
-				url:`${base}/01m_${w}_${s}_${n}.html`
-			});
-		}
-	}
-
-	list.innerHTML = items.map(it=>{
-		const done = !!state.completed[it.key];
-		return `
-			<button class="content-card" type="button"
-				data-go-content="${it.key}"
-				data-title="${title}"
-				data-url="${it.url}">
-				${done ? `<span class="done">완료</span>` : ``}
-				<strong>${it.title}</strong>
-			</button>
-		`;
-	}).join("");
-
-	// 상단 back 버튼에 subject/title를 실어둠
-	const back = $("#btn_back_elder");
-	if(back){
-		back.dataset.action = "back_elder";
-	}
-}
-
-// ---------- Content player ----------
-function renderContentPlayer({contentKey, title, url}){
-	const frame = $("#player_iframe");
-	if(frame) frame.src = url;
-
-	const doneBtn = $("#btn_complete");
-	if(doneBtn){
-		doneBtn.dataset.action = "complete";
-		doneBtn.dataset.contentKey = contentKey;
-		doneBtn.dataset.backSubject = (contentKey||"").split("_")[0];
-		doneBtn.dataset.backTitle = title || "콘텐츠";
-	}
-}
-
-// ---------- Start ----------
-export async function Start(){
-	loadState();
-	await ShowFrame();
-	// 첫 화면은 프로필 선택(로그인은 별도 페이지에서 app.html로 들어온다고 가정)
-	ShowView("profile_select");
+// ===================
+// Utils
+// ===================
+function cssEscape(id) {
+  // 간단 escape (template id에 특수문자 거의 없을 거라 이 정도면 충분)
+  return id.replace(/([#.;,[\]()>:+*~'"\\])/g, "\\$1");
 }
