@@ -34,8 +34,9 @@ export async function Start() {
  */
 async function preloadFrames() {
   const paths = {
-    login: "/login.html", // 경로가 틀리다면 "./login.html" 등으로 수정 필요
-    app: "/app.html"
+    // 기존 "/login.html"에서 "/m/login.html"로 수정
+    login: "/m/login.html", 
+    app: "/m/app.html"
   };
 
   for (const [key, url] of Object.entries(paths)) {
@@ -45,11 +46,11 @@ async function preloadFrames() {
       frameCache[key] = await res.text();
     } catch (err) {
       console.error(`Frame [${key}] load error:`, err);
-      frameCache[key] = `<div style="padding:20px;">Frame '${key}' 로드 실패. 서버 경로를 확인하세요.</div>`;
+      // 에러 시 사용자에게 보이는 메시지
+      frameCache[key] = `<div style="padding:20px;">Frame '${key}' 로드 실패. 경로(${url})를 확인하세요.</div>`;
     }
   }
 }
-
 /**
  * 3. 큰 액자(Frame) 교체: 로그인 vs 메인 앱
  */
